@@ -32,6 +32,12 @@
   }
   header h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.2px; }
   header .sub { margin-top: 4px; font-size: 12px; color: #c9d6e5; }
+  header .header-inner { max-width: 1280px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .refresh-btn {
+    flex-shrink: 0; display: inline-block; border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.08);
+    color: #fff; text-decoration: none; font-size: 12px; font-weight: 600; padding: 8px 14px; border-radius: 4px; white-space: nowrap;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.18); }
   .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 26px 60px; }
 
   .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; margin-bottom: 18px; }
@@ -91,8 +97,16 @@
 </head>
 <body>
 <header>
-  <h1>S&amp;P 500 Performance Dashboard</h1>
-  <div class="sub" id="subtitle"></div>
+  <div class="header-inner">
+    <div>
+      <h1>S&amp;P 500 Performance Dashboard</h1>
+      <div class="sub" id="subtitle"></div>
+    </div>
+    <a class="refresh-btn" href="https://github.com/loganday2018-svg/sp500-dashboard/actions/workflows/update.yml"
+       target="_blank" rel="noopener" title="Opens GitHub Actions &mdash; click &quot;Run workflow&quot; to refresh now">
+      &#8635; Refresh Data
+    </a>
+  </div>
 </header>
 
 <div class="wrap">
