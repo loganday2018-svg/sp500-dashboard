@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S&P 500 Performance Dashboard</title>
+<style>
+  :root {
+    --navy: #1F4E78;
+    --ink: #1a1d23;
+    --muted: #6b7280;
+    --line: #e4e7ec;
+    --bg: #f4f5f7;
+    --card: #ffffff;
+    --green: #137333;
+    --green-bg: #e6f4ea;
+    --red: #b00020;
+    --red-bg: #fce8e6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    font-size: 14px;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 18px 26px;
+  }
+  header h1 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.2px; }
+  header .sub { margin-top: 4px; font-size: 12px; color: #c9d6e5; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 20px 26px 60px; }
+
+  .toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; margin-bottom: 18px; }
+  .toggle button { border: 0; background: #fff; padding: 8px 18px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+  .toggle button.active { background: var(--navy); color: #fff; }
+
+  .cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; }
+  .card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+  .card .value { font-size: 22px; font-weight: 600; margin-top: 6px; }
+  .card .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 16px; }
+  .panel h2 { margin: 0 0 12px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+
+  .barrow { display: grid; grid-template-columns: 130px 1fr 64px; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+  .barrow .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bartrack { position: relative; height: 16px; background: #f0f1f3; border-radius: 2px; }
+  .barfill { position: absolute; top: 0; height: 100%; border-radius: 2px; }
+  .barfill.pos { background: var(--green); left: 50%; }
+  .barfill.neg { background: var(--red); right: 50%; }
+  .barpct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .controls input, .controls select {
+    border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; font-size: 13px; background: #fff; color: var(--ink);
+  }
+  .controls input[type="search"] { min-width: 220px; }
+  .controls .count { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .controls button.reset { border: 1px solid var(--line); background: #fff; border-radius: 4px; padding: 8px 12px; font-size: 13px; cursor: pointer; color: var(--ink); }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); }
+  thead th {
+    position: sticky; top: 0; background: var(--navy); color: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px;
+    padding: 9px 10px; text-align: right; cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th.left { text-align: left; }
+  thead th .arrow { font-size: 9px; opacity: 0.7; }
+  tbody td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  tbody td.left { text-align: left; }
+  tbody tr:hover { background: #f8fafc; }
+  .tick { font-weight: 600; color: var(--navy); }
+  .pill { display: inline-block; min-width: 62px; text-align: right; padding: 2px 8px; border-radius: 3px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pill.pos { color: var(--green); background: var(--green-bg); }
+  .pill.neg { color: var(--red); background: var(--red-bg); }
+  .rel.pos { color: var(--green); }
+  .rel.neg { color: var(--red); }
+  .sectortag { font-size: 11px; color: var(--muted); }
+  footer { text-align: center; font-size: 11px; color: var(--muted); margin-top: 24px; }
+
+  @media (max-width: 880px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>S&amp;P 500 Performance Dashboard</h1>
+  <div class="sub" id="subtitle"></div>
+</header>
+
+<div class="wrap">
+  <div class="toggle" id="viewToggle">
+    <button data-view="day" class="active">Daily</button>
+    <button data-view="week">Weekly</button>
+  </div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2 id="topTitle">Top Movers</h2>
+      <div id="topMovers"></div>
+    </div>
+    <div class="panel">
+      <h2>By Sector (average)</h2>
+      <div id="sectorBars"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <input type="search" id="search" placeholder="Search ticker or company...">
+    <select id="sectorFilter"><option value="">All sectors</option></select>
+    <select id="dirFilter">
+      <option value="all">All</option>
+      <option value="gain">Gainers only</option>
+      <option value="lose">Losers only</option>
+      <option value="beat">Beating index</option>
+      <option value="lag">Lagging index</option>
+    </select>
+    <button class="reset" id="reset">Reset</button>
+    <span class="count" id="count"></span>
+  </div>
+
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th class="left" data-key="ticker">Ticker <span class="arrow"></span></th>
+        <th class="left" data-key="name">Company <span class="arrow"></span></th>
+        <th class="left" data-key="sector">Sector <span class="arrow"></span></th>
+        <th data-key="lastClose">Last <span class="arrow"></span></th>
+        <th data-key="pct" id="pctHead">% Change <span class="arrow"></span></th>
+        <th data-key="rel">vs Index <span class="arrow"></span></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+const RAW = __DATA__;
+const META = __META__;
+
+let view = "day";                  // "day" | "week"
+let sort = { key: "pct", dir: -1 };
+
+const fmt = (n, d=2) => n==null ? "" : n.toLocaleString("en-US", {minimumFractionDigits:d, maximumFractionDigits:d});
+const pctOf = r => view === "day" ? r.dayPct : r.weekPct;
+const idxAvg = () => view === "day" ? META.idxDay : META.idxWeek;
+const relOf = r => pctOf(r) - idxAvg();
+
+function decorate(r) {
+  return { ...r, pct: pctOf(r), rel: relOf(r) };
+}
+
+function buildCards() {
+  const rows = RAW.map(decorate);
+  const up = rows.filter(r => r.pct > 0).length;
+  const down = rows.filter(r => r.pct < 0).length;
+  const best = rows.reduce((a,b)=> b.pct>a.pct?b:a);
+  const worst = rows.reduce((a,b)=> b.pct<a.pct?b:a);
+  const avg = idxAvg();
+  const cls = v => v>=0 ? "pos" : "neg";
+  const sign = v => (v>=0?"+":"") + fmt(v) + "%";
+  document.getElementById("cards").innerHTML = `
+    <div class="card"><div class="label">Advancers</div><div class="value rel pos">${up}</div><div class="meta">of ${rows.length} companies</div></div>
+    <div class="card"><div class="label">Decliners</div><div class="value rel neg">${down}</div><div class="meta">of ${rows.length} companies</div></div>
+    <div class="card"><div class="label">Index Average</div><div class="value rel ${cls(avg)}">${sign(avg)}</div><div class="meta">equal-weight</div></div>
+    <div class="card"><div class="label">Best</div><div class="value rel pos">${sign(best.pct)}</div><div class="meta">${best.ticker} ${best.name}</div></div>
+    <div class="card"><div class="label">Worst</div><div class="value rel neg">${sign(worst.pct)}</div><div class="meta">${worst.ticker} ${worst.name}</div></div>`;
+}
+
+function buildTopMovers() {
+  const rows = RAW.map(decorate).slice().sort((a,b)=>b.pct-a.pct);
+  const top = rows.slice(0,8);
+  const bottom = rows.slice(-8).reverse();
+  const list = [...top, ...bottom];
+  const max = Math.max(...list.map(r=>Math.abs(r.pct)), 1);
+  document.getElementById("topTitle").textContent = "Top Movers (" + (view==="day"?"daily":"weekly") + ")";
+  document.getElementById("topMovers").innerHTML = list.map(r => {
+    const pos = r.pct >= 0;
+    const w = (Math.abs(r.pct)/max*50).toFixed(1);
+    return `<div class="barrow">
+      <span class="name"><span class="tick">${r.ticker}</span></span>
+      <div class="bartrack"><div class="barfill ${pos?'pos':'neg'}" style="width:${w}%"></div></div>
+      <span class="barpct rel ${pos?'pos':'neg'}">${(pos?'+':'')+fmt(r.pct)}%</span>
+    </div>`;
+  }).join("");
+}
+
+function buildSectorBars() {
+  const groups = {};
+  RAW.forEach(r => { (groups[r.sector] ||= []).push(pctOf(r)); });
+  const arr = Object.entries(groups).map(([s,v]) => ({s, avg: v.reduce((a,b)=>a+b,0)/v.length}))
+    .sort((a,b)=>b.avg-a.avg);
+  const max = Math.max(...arr.map(x=>Math.abs(x.avg)), 0.5);
+  document.getElementById("sectorBars").innerHTML = arr.map(x => {
+    const pos = x.avg >= 0;
+    const w = (Math.abs(x.avg)/max*50).toFixed(1);
+    return `<div class="barrow">
+      <span class="name">${x.s}</span>
+      <div class="bartrack"><div class="barfill ${pos?'pos':'neg'}" style="width:${w}%"></div></div>
+      <span class="barpct rel ${pos?'pos':'neg'}">${(pos?'+':'')+fmt(x.avg)}%</span>
+    </div>`;
+  }).join("");
+}
+
+function buildTable() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const sec = document.getElementById("sectorFilter").value;
+  const dir = document.getElementById("dirFilter").value;
+  let rows = RAW.map(decorate);
+  if (q) rows = rows.filter(r => r.ticker.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
+  if (sec) rows = rows.filter(r => r.sector === sec);
+  if (dir === "gain") rows = rows.filter(r => r.pct > 0);
+  else if (dir === "lose") rows = rows.filter(r => r.pct < 0);
+  else if (dir === "beat") rows = rows.filter(r => r.rel > 0);
+  else if (dir === "lag") rows = rows.filter(r => r.rel < 0);
+
+  rows.sort((a,b) => {
+    let va = a[sort.key], vb = b[sort.key];
+    if (typeof va === "string") return va.localeCompare(vb) * sort.dir;
+    return (va - vb) * sort.dir;
+  });
+
+  document.getElementById("tbody").innerHTML = rows.map(r => {
+    const pc = r.pct, rl = r.rel;
+    return `<tr>
+      <td class="left tick">${r.ticker}</td>
+      <td class="left">${r.name}</td>
+      <td class="left sectortag">${r.sector}</td>
+      <td>${fmt(r.lastClose)}</td>
+      <td><span class="pill ${pc>=0?'pos':'neg'}">${(pc>=0?'+':'')+fmt(pc)}%</span></td>
+      <td class="rel ${rl>=0?'pos':'neg'}">${(rl>=0?'+':'')+fmt(rl)}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("count").textContent = rows.length + " of " + RAW.length + " shown";
+  document.querySelectorAll("thead th").forEach(th => {
+    const a = th.querySelector(".arrow");
+    if (a) a.textContent = th.dataset.key === sort.key ? (sort.dir<0?"▼":"▲") : "";
+  });
+}
+
+function renderAll() {
+  document.getElementById("pctHead").firstChild.textContent =
+    (view==="day"?"Daily %":"Weekly %") + " ";
+  buildCards(); buildTopMovers(); buildSectorBars(); buildTable();
+}
+
+// wiring
+document.getElementById("viewToggle").addEventListener("click", e => {
+  const btn = e.target.closest("button"); if (!btn) return;
+  view = btn.dataset.view;
+  document.querySelectorAll("#viewToggle button").forEach(b => b.classList.toggle("active", b===btn));
+  renderAll();
+});
+["search","sectorFilter","dirFilter"].forEach(id =>
+  document.getElementById(id).addEventListener("input", buildTable));
+document.getElementById("reset").addEventListener("click", () => {
+  document.getElementById("search").value = "";
+  document.getElementById("sectorFilter").value = "";
+  document.getElementById("dirFilter").value = "all";
+  buildTable();
+});
+document.querySelectorAll("thead th").forEach(th => th.addEventListener("click", () => {
+  const k = th.dataset.key;
+  if (sort.key === k) sort.dir *= -1;
+  else sort = { key: k, dir: (k==="ticker"||k==="name"||k==="sector") ? 1 : -1 };
+  buildTable();
+}));
+
+// init
+(function init(){
+  document.getElementById("subtitle").innerHTML =
+    `Daily: ${META.dailyRange} &nbsp;|&nbsp; Weekly: ${META.weeklyRange} &nbsp;|&nbsp; ${RAW.length} companies &nbsp;|&nbsp; updated ${META.updated}`;
+  document.getElementById("footer").textContent =
+    "Source: Yahoo Finance via yfinance. Returns use adjusted close. Generated " + META.updated + ".";
+  const secs = [...new Set(RAW.map(r=>r.sector))].sort();
+  const sel = document.getElementById("sectorFilter");
+  secs.forEach(s => { const o=document.createElement("option"); o.value=s; o.textContent=s; sel.appendChild(o); });
+  renderAll();
+})();
+</script>
+</body>
+</html>

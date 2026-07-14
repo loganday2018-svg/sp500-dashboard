@@ -1,0 +1,38 @@
+name: Update S&P 500 Dashboard
+
+on:
+  schedule:
+    # ~7:55 PM Pacific (PDT). See README for the DST caveat.
+    - cron: "55 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run S&P 500 update
+        env:
+          SP500_OUT: ${{ github.workspace }}/SP500_Weekly_Performance.xlsx
+          SP500_DASH: ${{ github.workspace }}/docs/index.html
+          SP500_NO_OPEN: "1"
+        run: python sp500_update.py
+
+      - name: Commit and push updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add SP500_Weekly_Performance.xlsx docs/index.html
+          git diff --cached --quiet || git commit -m "Auto-update S&P 500 data $(date -u +%Y-%m-%d)"
+          git push
